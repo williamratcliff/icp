@@ -6,6 +6,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -128,8 +129,13 @@
 <input class="w-full input-field" id="efixed-value" placeholder="e.g., 14.7" type="text"/>
 </div>
 </div>
+<div>
+<label class="block form-label" for="instrument-angles">M2,S1,S2,A2 (degrees)</label>
+<input class="w-full input-field" id="instrument-angles" placeholder="e.g., 60.5,25.1,50.2,60.5" type="text"/>
+</div>
+</div>
 <div class="pt-4">
-<button class="w-full md:w-auto btn-primary">
+<button class="w-full md:w-auto btn-primary" id="calculate-button">
                 CALCULATE
             </button>
 </div>
@@ -204,4 +210,144 @@
 </div>
 </div>
 
+<script>
+    async function mainPyodide() {
+        let pyodide = await loadPyodide();
+        await pyodide.loadPackage("numpy");
+        console.log("Numpy loaded.");
+        try {
+            await pyodide.runPythonAsync(`
+                from pyodide.http import pyfetch
+                response = await pyfetch("./lattice_calculator_procedural2.py")
+                with open("lattice_calculator_procedural2.py", "wb") as f:
+                    f.write(response.bytes())
+                
+                // Ensure the main script is imported so functions are available
+                import lattice_calculator_procedural2
+            `);
+            console.log("Python script fetched and run in Pyodide FS.");
+            self.pyodideInstance = pyodide; // Make pyodide instance available globally
+            
+            // Check if the function is available
+            let checkFunc = self.pyodideInstance.globals.get('py_calculate_hkl_e_from_angles');
+            if (typeof checkFunc !== 'function') {
+                 console.error("Python function 'py_calculate_hkl_e_from_angles' not found after script execution. Ensure it's defined globally in the Python script.");
+                 alert("Critical error: Python calculation function not exposed. Check console.");
+            } else {
+                console.log("'py_calculate_hkl_e_from_angles' function is available.");
+            }
+
+        } catch (error) {
+            console.error("Error loading Python script into Pyodide:", error);
+            alert("Error loading Python script: " + error.message);
+            return; 
+        }
+        
+        const calculateButton = document.getElementById("calculate-button");
+        if (calculateButton) {
+            calculateButton.addEventListener("click", handleCalculation);
+            console.log("Event listener added to calculate button.");
+        } else {
+            console.error("Calculate button not found by ID 'calculate-button'.");
+        }
+        // Add clear button functionality if needed (assuming a button with class 'is-danger' or similar ID)
+    }
+    mainPyodide();
+
+    async function handleCalculation() {
+        if (!self.pyodideInstance) {
+            alert("Pyodide is not initialized yet.");
+            console.error("Pyodide instance not available in self.pyodideInstance");
+            return;
+        }
+        // Ensure the python function is resolved at the time of call
+        const calculateFromPython = self.pyodideInstance.globals.get('py_calculate_hkl_e_from_angles');
+        if (typeof calculateFromPython !== 'function') {
+            alert("Python calculation function 'py_calculate_hkl_e_from_angles' is not available. Check console.");
+            console.error("'py_calculate_hkl_e_from_angles' is not a function or not found in pyodide globals.");
+            return;
+        }
+
+        try {
+            const crystalSystem = document.getElementById('crystal-system').value;
+            const abcString = document.getElementById('a-b-c').value;
+            const anglesString = document.getElementById('alpha-beta-gamma').value;
+            const orient1String = document.getElementById('orientation-vector-1').value;
+            const orient2String = document.getElementById('orientation-vector-2').value;
+            const fixedField = document.getElementById('fixed-field').value; 
+            const efixedString = document.getElementById('efixed-value').value;
+            const instrumentAnglesString = document.getElementById('instrument-angles').value;
+
+            if (!abcString || !anglesString || !orient1String || !orient2String || !efixedString || !instrumentAnglesString) {
+                alert("Please fill in all crystal, orientation, Efixed, and instrument angle fields.");
+                return;
+            }
+            
+            let efixedValue = parseFloat(efixedString);
+            if (isNaN(efixedValue)) {
+                alert("Efixed value must be a number.");
+                return;
+            }
+
+            console.log("Calling Python function with inputs:", 
+                crystalSystem, abcString, anglesString, orient1String, orient2String, 
+                fixedField, efixedValue, instrumentAnglesString);
+
+            let results = await calculateFromPython(
+                crystalSystem,
+                abcString, anglesString,
+                orient1String, orient2String,
+                fixedField, efixedValue,
+                instrumentAnglesString
+            );
+            
+            const tableBody = document.querySelector("table tbody");
+            tableBody.innerHTML = ""; 
+
+            // Pyodide might return a PyProxy, convert to JS object if necessary
+            if (results && typeof results.toJs === 'function') {
+                results = results.toJs({ dict_converter: Object.fromEntries });
+            }
+            
+            // Check if results is an array (for multiple rows) or a single object
+            const resultsArray = Array.isArray(results) ? results : [results];
+
+
+            if (resultsArray.length > 0 && !resultsArray[0].error) {
+                resultsArray.forEach(row => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td class="table-cell">${row.h !== undefined ? row.h.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${row.k !== undefined ? row.k.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${row.l !== undefined ? row.l.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${row.e !== undefined ? row.e.toFixed(4) : 'N/A'}</td> 
+                        <td class="table-cell">${row.m2 !== undefined ? row.m2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${row.m1 !== undefined ? row.m1.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${row.a2 !== undefined ? row.a2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${row.a1 !== undefined ? row.a1.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${row.s2 !== undefined ? row.s2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${row.s1 !== undefined ? row.s1.toFixed(3) : 'N/A'}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+                 console.log("Calculation successful. Displayed results:", resultsArray);
+            } else {
+                const errorMessage = resultsArray.length > 0 && resultsArray[0].error ? resultsArray[0].error : "No results or error in Python calculation.";
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="10" class="table-cell">${errorMessage}</td>`;
+                tableBody.appendChild(tr);
+                console.log("Python calculation returned an error or no results:", errorMessage);
+            }
+
+        } catch (error) {
+            console.error("JavaScript error during calculation:", error);
+            alert("A JavaScript error occurred: " + error.message);
+            const tableBody = document.querySelector("table tbody");
+            tableBody.innerHTML = ""; 
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td colspan="10" class="table-cell">JS Error: ${error.message}</td>`;
+            tableBody.appendChild(tr);
+        }
+    }
+</script>
 </body></html>
