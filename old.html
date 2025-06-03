@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Crystal System Calculation</title>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1e293b;
+            color: #f8fafc;
+        }
+        .input-field {
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px #38bdf833;
+        }
+        .select-field {
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
+        }
+        .select-field:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px #38bdf833;
+        }
+        .btn-primary {
+            background-color: #38bdf8;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #0ea5e9;
+        }
+        .table-header {
+            background-color: #334155;
+            color: #cbd5e1;
+            font-weight: 500;
+            text-align: center;
+            padding: 0.75rem;
+            border: 1px solid #475569;
+        }
+        .table-cell {
+            color: #f8fafc;
+            text-align: center;
+            padding: 0.75rem;
+            border: 1px solid #475569;
+            height: 3rem;
+        }
+        .form-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+<style>
+    /* Replace your previous added styles with these */
+    input.input-field, select.select-field {
+        /* Lighter background for better contrast */
+        background-color: #1e293b !important; 
+        /* Very light text color */
+        color: #e2e8f0 !important;
+        /* Brighter border */
+        border: 2px solid #64748b !important;
+    }
+    
+    /* Debugging outline to see if the styles are being applied */
+    input.input-field:focus, select.select-field:focus {
+        outline: 3px solid #3b82f6 !important;
+        border-color: #3b82f6 !important;
+    }
+    
+    ::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+    }
+    
+    /* Override browser autofill styles which often use white background */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
+        -webkit-text-fill-color: #e2e8f0 !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+</style>
+</head>
+<body class="p-6 md:p-10">
+<div class="max-w-4xl mx-auto">
+<div class="space-y-6 mt-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+<div>
+<label class="block form-label" for="crystal-system">Crystal system</label>
+<select class="w-full select-field" id="crystal-system">
+<option value="cubic">Cubic</option>
+<option value="tetragonal">Tetragonal</option>
+<option value="orthorhombic">Orthorhombic</option>
+<option value="hexagonal">Hexagonal</option>
+<option value="rhombohedral">Rhombohedral</option>
+<option value="monoclinic">Monoclinic</option>
+<option value="triclinic">Triclinic</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div>
+<label class="block form-label" for="a-b-c">a, b, c</label>
+<input class="w-full input-field" id="a-b-c" placeholder="e.g., 1,2,3" type="text"/>
+</div>
+<div>
+<label class="block form-label" for="alpha-beta-gamma">α, β, γ</label>
+<input class="w-full input-field" id="alpha-beta-gamma" placeholder="e.g., 90,90,90" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block form-label" for="orientation-vector-1">Orientation vector 1</label>
+<input class="w-full input-field" id="orientation-vector-1" placeholder="e.g., [1,0,0]" type="text"/>
+</div>
+<div>
+<label class="block form-label" for="orientation-vector-2">Orientation vector 2</label>
+<input class="w-full input-field" id="orientation-vector-2" placeholder="e.g., [0,1,0]" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+<div>
+<label class="block form-label" for="fixed-field">Fixed Field</label>
+<select class="w-full select-field" id="fixed-field">
+<option value="EI">EI</option>
+<option value="EF">EF</option>
+</select>
+</div>
+<div>
+<label class="block form-label" for="efixed-value">EFIXED</label>
+<input class="w-full input-field" id="efixed-value" placeholder="e.g., 14.7" type="text"/>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full md:w-auto btn-primary">
+                CALCULATE
+            </button>
+</div>
+</div>
+<div class="mt-10 overflow-x-auto">
+<table class="w-full border-collapse border border-slate-600 rounded-lg">
+<thead>
+<tr>
+<th class="table-header">h</th>
+<th class="table-header">k</th>
+<th class="table-header">l</th>
+<th class="table-header">w</th>
+<th class="table-header">M2</th>
+<th class="table-header">M1</th>
+<th class="table-header">A2</th>
+<th class="table-header">A1</th>
+<th class="table-header">S2</th>
+<th class="table-header">S1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+</tr>
+<tr>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+</tr>
+<tr>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+</tr>
+<tr>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+<td class="table-cell"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make sure form fields are enabled
+    document.querySelectorAll('input, select').forEach(el => {
+        el.disabled = false;
+    });
+    
+    // Add button handler
+    const calculateButton = document.querySelector('.btn-primary');
+    calculateButton.addEventListener('click', function() {
+        // Test function to show the values are being captured
+        const values = {
+            crystalSystem: document.getElementById('crystal-system').value,
+            abc: document.getElementById('a-b-c').value,
+            angles: document.getElementById('alpha-beta-gamma').value
+        };
+        alert('Form values: ' + JSON.stringify(values));
+    });
+});
+</script>
+</body></html>

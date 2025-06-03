@@ -3,7 +3,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Crystal System Calculation</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
@@ -77,7 +77,36 @@
             color: #94a3b8;
             margin-bottom: 0.25rem;
         }
-    </style>
+    /* Form field visibility fix */
+    input.input-field, select.select-field {
+        /* Lighter background for better contrast */
+        background-color: #1e293b !important; 
+        /* Very light text color */
+        color: #e2e8f0 !important;
+        /* Brighter border */
+        border: 2px solid #64748b !important;
+    }
+    
+    /* Debugging outline to see if the styles are being applied */
+    input.input-field:focus, select.select-field:focus {
+        outline: 3px solid #3b82f6 !important;
+        border-color: #3b82f6 !important;
+    }
+    
+    ::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+    }
+    
+    /* Override browser autofill styles which often use white background */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
+        -webkit-text-fill-color: #e2e8f0 !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+</style>
 </head>
 <body class="p-6 md:p-10">
 <div class="max-w-4xl mx-auto">
@@ -138,6 +167,9 @@
 <button class="w-full md:w-auto btn-primary" id="calculate-button">
                 CALCULATE
             </button>
+<button class="btn-primary bg-indigo-600 hover:bg-indigo-700 ml-2" id="reset-defaults-button">
+    RESET DEFAULTS
+</button>
 </div>
 </div>
 <div class="mt-10 overflow-x-auto">
@@ -211,7 +243,11 @@
 </div>
 
 <script>
-    async function mainPyodide() {
+   async function mainPyodide() {
+        // At the start of mainPyodide()
+        document.querySelectorAll('input, select').forEach(el => {
+        el.disabled = true;
+});
         let pyodide = await loadPyodide();
         await pyodide.loadPackage("numpy");
         console.log("Numpy loaded.");
@@ -219,19 +255,30 @@
             await pyodide.runPythonAsync(`
                 from pyodide.http import pyfetch
                 response = await pyfetch("./lattice_calculator_procedural2.py")
+                bytes_content = await response.bytes()
                 with open("lattice_calculator_procedural2.py", "wb") as f:
-                    f.write(response.bytes())
+                    f.write(bytes_content)
+                    #f.write(response.bytes())
                 
-                // Ensure the main script is imported so functions are available
+                # Ensure the main script is imported so functions are available
                 import lattice_calculator_procedural2
             `);
             console.log("Python script fetched and run in Pyodide FS.");
+            // After successful Pyodide loading
+            document.querySelectorAll('input, select').forEach(el => {
+            el.disabled = false;
+            });
             self.pyodideInstance = pyodide; // Make pyodide instance available globally
             
             // Check if the function is available
-            let checkFunc = self.pyodideInstance.globals.get('py_calculate_hkl_e_from_angles');
+            // let checkFunc = self.pyodideInstance.globals.get('py_calculate_hkl_e_from_angles');
+            //let checkFunc = self.pyodideInstance.globals.get('lattice_calculator_procedural2.py_calculate_hkl_e_from_angles');
+            //let checkFunc = self.pyodideInstance.runPython(`
+            //    lattice_calculator_procedural2.py_calculate_hkl_e_from_angles
+            //`);
+            let checkFunc = self.pyodideInstance.globals.get('lattice_calculator_procedural2').py_calculate_hkl_e_from_angles;
             if (typeof checkFunc !== 'function') {
-                 console.error("Python function 'py_calculate_hkl_e_from_angles' not found after script execution. Ensure it's defined globally in the Python script.");
+                  console.error("Python function 'py_calculate_hkl_e_from_angles' not found after script execution. Ensure it's defined globally in the Python script.");
                  alert("Critical error: Python calculation function not exposed. Check console.");
             } else {
                 console.log("'py_calculate_hkl_e_from_angles' function is available.");
@@ -240,7 +287,11 @@
         } catch (error) {
             console.error("Error loading Python script into Pyodide:", error);
             alert("Error loading Python script: " + error.message);
-            return; 
+            // Enable inputs even if Python fails
+            document.querySelectorAll('input, select').forEach(el => {
+                el.disabled = false;
+            });
+            return;
         }
         
         const calculateButton = document.getElementById("calculate-button");
@@ -261,13 +312,17 @@
             return;
         }
         // Ensure the python function is resolved at the time of call
-        const calculateFromPython = self.pyodideInstance.globals.get('py_calculate_hkl_e_from_angles');
+        //const calculateFromPython = self.pyodideInstance.globals.get('lattice_calculator_procedural2.py_calculate_hkl_e_from_angles');
+        //const calculateFromPython = self.pyodideInstance.runPython(`
+        //        lattice_calculator_procedural2.py_calculate_hkl_e_from_angles
+        //`);
+        const calculateFromPython = self.pyodideInstance.globals.get('lattice_calculator_procedural2').py_calculate_hkl_e_from_angles;
         if (typeof calculateFromPython !== 'function') {
             alert("Python calculation function 'py_calculate_hkl_e_from_angles' is not available. Check console.");
             console.error("'py_calculate_hkl_e_from_angles' is not a function or not found in pyodide globals.");
             return;
         }
-
+        console.log("Within Event Listener");
         try {
             const crystalSystem = document.getElementById('crystal-system').value;
             const abcString = document.getElementById('a-b-c').value;
@@ -293,14 +348,30 @@
                 crystalSystem, abcString, anglesString, orient1String, orient2String, 
                 fixedField, efixedValue, instrumentAnglesString);
 
-            let results = await calculateFromPython(
+            //let results = await calculateFromPython(
+            //    crystalSystem,
+            //    abcString, anglesString,
+            //    orient1String, orient2String,
+            //    fixedField, efixedValue,
+            //    instrumentAnglesString
+            //);
+
+            // Use proper Pyodide JS API - this is more reliable than runPythonAsync
+            const calculateFn = self.pyodideInstance.globals.get('lattice_calculator_procedural2').py_calculate_hkl_e_from_angles;
+            
+         
+            
+            // Call the function directly using the JS API
+            let results = calculateFn(
                 crystalSystem,
-                abcString, anglesString,
-                orient1String, orient2String,
-                fixedField, efixedValue,
+                abcString, 
+                anglesString,
+                orient1String, 
+                orient2String,
+                fixedField, 
+                efixedValue,
                 instrumentAnglesString
             );
-            
             const tableBody = document.querySelector("table tbody");
             tableBody.innerHTML = ""; 
 
@@ -317,16 +388,16 @@
                 resultsArray.forEach(row => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                        <td class="table-cell">${row.h !== undefined ? row.h.toFixed(4) : 'N/A'}</td>
-                        <td class="table-cell">${row.k !== undefined ? row.k.toFixed(4) : 'N/A'}</td>
-                        <td class="table-cell">${row.l !== undefined ? row.l.toFixed(4) : 'N/A'}</td>
-                        <td class="table-cell">${row.e !== undefined ? row.e.toFixed(4) : 'N/A'}</td> 
-                        <td class="table-cell">${row.m2 !== undefined ? row.m2.toFixed(3) : 'N/A'}</td>
-                        <td class="table-cell">${row.m1 !== undefined ? row.m1.toFixed(3) : 'N/A'}</td>
-                        <td class="table-cell">${row.a2 !== undefined ? row.a2.toFixed(3) : 'N/A'}</td>
-                        <td class="table-cell">${row.a1 !== undefined ? row.a1.toFixed(3) : 'N/A'}</td>
-                        <td class="table-cell">${row.s2 !== undefined ? row.s2.toFixed(3) : 'N/A'}</td>
-                        <td class="table-cell">${row.s1 !== undefined ? row.s1.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.h === 'number' ? row.h.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.k === 'number' ? row.k.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.l === 'number' ? row.l.toFixed(4) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.e === 'number' ? row.e.toFixed(4) : 'N/A'}</td> 
+                        <td class="table-cell">${typeof row.m2 === 'number' ? row.m2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.m1 === 'number' ? row.m1.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.a2 === 'number' ? row.a2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.a1 === 'number' ? row.a1.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.s2 === 'number' ? row.s2.toFixed(3) : 'N/A'}</td>
+                        <td class="table-cell">${typeof row.s1 === 'number' ? row.s1.toFixed(3) : 'N/A'}</td>
                     `;
                     tableBody.appendChild(tr);
                 });
@@ -348,6 +419,21 @@
             tr.innerHTML = `<td colspan="10" class="table-cell">JS Error: ${error.message}</td>`;
             tableBody.appendChild(tr);
         }
+    }
+
+    // Reset defaults button functionality
+    const resetDefaultsButton = document.getElementById("reset-defaults-button");
+    if (resetDefaultsButton) {
+        resetDefaultsButton.addEventListener("click", () => {
+            document.getElementById('crystal-system').value = "cubic";
+            document.getElementById('a-b-c').value = "10,10,10";
+            document.getElementById('alpha-beta-gamma').value = "90,90,90";
+            document.getElementById('orientation-vector-1').value = "[1,0,0]";
+            document.getElementById('orientation-vector-2').value = "[0,1,0]";
+            document.getElementById('fixed-field').value = "EI";
+            document.getElementById('efixed-value').value = "14.7";
+            document.getElementById('instrument-angles').value = "41.177,30.0,61.0,41.177";
+        });
     }
 </script>
 </body></html>
