@@ -348,30 +348,21 @@
                 crystalSystem, abcString, anglesString, orient1String, orient2String, 
                 fixedField, efixedValue, instrumentAnglesString);
 
-            //let results = await calculateFromPython(
-            //    crystalSystem,
-            //    abcString, anglesString,
-            //    orient1String, orient2String,
-            //    fixedField, efixedValue,
-            //    instrumentAnglesString
-            //);
-
             // Use proper Pyodide JS API - this is more reliable than runPythonAsync
-            const calculateFn = self.pyodideInstance.globals.get('lattice_calculator_procedural2').py_calculate_hkl_e_from_angles;
-            
-         
-            
-            // Call the function directly using the JS API
-            let results = calculateFn(
-                crystalSystem,
-                abcString, 
-                anglesString,
-                orient1String, 
-                orient2String,
-                fixedField, 
-                efixedValue,
-                instrumentAnglesString
-            );
+            let results = await self.pyodideInstance.runPythonAsync(`
+                import lattice_calculator_procedural2
+                result = lattice_calculator_procedural2.py_calculate_hkl_e_from_angles(
+                    "${crystalSystem}",
+                    "${abcString}", 
+                    "${anglesString}",
+                    "${orient1String}", 
+                    "${orient2String}",
+                    "${fixedField}", 
+                    ${efixedValue},
+                    "${instrumentAnglesString}"
+                )
+                result
+            `);
             const tableBody = document.querySelector("table tbody");
             tableBody.innerHTML = ""; 
 
