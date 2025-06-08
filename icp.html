@@ -158,9 +158,15 @@
 <input class="w-full input-field" id="efixed-value" placeholder="e.g., 14.7" type="text"/>
 </div>
 </div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 <div>
-<label class="block form-label" for="instrument-angles">M2,S1,S2,A2 (degrees)</label>
-<input class="w-full input-field" id="instrument-angles" placeholder="e.g., 60.5,25.1,50.2,60.5" type="text"/>
+<label class="block form-label" for="h-k-l">h, k, l</label>
+<input class="w-full input-field" id="h-k-l" placeholder="e.g., 1,0,0" type="text"/>
+</div>
+<div>
+<label class="block form-label" for="w-value">w (energy transfer)</label>
+<input class="w-full input-field" id="w-value" placeholder="e.g., 0.0" type="text"/>
+</div>
 </div>
 </div>
 <div class="pt-4">
@@ -331,10 +337,11 @@
             const orient2String = document.getElementById('orientation-vector-2').value;
             const fixedField = document.getElementById('fixed-field').value; 
             const efixedString = document.getElementById('efixed-value').value;
-            const instrumentAnglesString = document.getElementById('instrument-angles').value;
+            const hklString = document.getElementById('h-k-l').value;
+            const wString = document.getElementById('w-value').value;
 
-            if (!abcString || !anglesString || !orient1String || !orient2String || !efixedString || !instrumentAnglesString) {
-                alert("Please fill in all crystal, orientation, Efixed, and instrument angle fields.");
+            if (!abcString || !anglesString || !orient1String || !orient2String || !efixedString || !hklString || !wString) {
+                alert("Please fill in all crystal, orientation, Efixed, and h,k,l,w fields.");
                 return;
             }
             
@@ -346,7 +353,7 @@
 
             console.log("Calling Python function with inputs:", 
                 crystalSystem, abcString, anglesString, orient1String, orient2String, 
-                fixedField, efixedValue, instrumentAnglesString);
+                fixedField, efixedValue, hklString, wString);
 
             // Use proper Pyodide JS API - this is more reliable than runPythonAsync
             let results = await self.pyodideInstance.runPythonAsync(`
@@ -359,7 +366,8 @@
                     "${orient2String}",
                     "${fixedField}", 
                     ${efixedValue},
-                    "${instrumentAnglesString}"
+                    "${hklString}",
+                    "${wString}"
                 )
                 result
             `);
@@ -423,7 +431,8 @@
             document.getElementById('orientation-vector-2').value = "[0,1,0]";
             document.getElementById('fixed-field').value = "EI";
             document.getElementById('efixed-value').value = "14.7";
-            document.getElementById('instrument-angles').value = "41.177,30.0,61.0,41.177";
+            document.getElementById('h-k-l').value = "4,0,0";
+            document.getElementById('w-value').value = "0.0";
         });
     }
 </script>

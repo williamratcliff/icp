@@ -297,7 +297,7 @@ def parse_float_list_str(num_str, name, count=3, default_val=0.0):
 def py_calculate_hkl_e_from_angles(crystal_system_str, abc_str, angles_str, 
                                    orient1_str, orient2_str, 
                                    fixed_field_str, efixed_val, 
-                                   instrument_angles_str):
+                                   hkl_str, w_str):
     try:
         a_vals = parse_float_list_str(abc_str, "a,b,c", 3)
         angle_vals = parse_float_list_str(angles_str, "alpha,beta,gamma", 3, default_val=90.0)
@@ -316,12 +316,12 @@ def py_calculate_hkl_e_from_angles(crystal_system_str, abc_str, angles_str,
         orient1 = parse_vector_str(orient1_str, "Orientation Vector 1")
         orient2 = parse_vector_str(orient2_str, "Orientation Vector 2")
         
-        instr_angles = parse_float_list_str(instrument_angles_str, "Instrument Angles", 4)
-        m2_deg, s1_deg, s2_deg, a2_deg = instr_angles[0], instr_angles[1], instr_angles[2], instr_angles[3]
+        hkl_vals = parse_float_list_str(hkl_str, "h,k,l", 3)
+        h, k, l = hkl_vals[0], hkl_vals[1], hkl_vals[2]
+        w = float(w_str)
 
         lattice = Lattice(a,b,c,alpha,beta,gamma,orient1,orient2)
         orientation = Orientation(orient1, orient2) 
-        instrument = Instrument()
 
         exp_item = {
             'mono': {'tau': 'pg(002)'}, 'ana': {'tau': 'pg(002)'}, 
@@ -329,16 +329,16 @@ def py_calculate_hkl_e_from_angles(crystal_system_str, abc_str, angles_str,
             'infin': -1 if fixed_field_str.upper() == "EI" else 1
         }
         
-        H, K, L, E, Q, Ei, Ef = SpecWhere(
-            N.array([m2_deg]), N.array([s1_deg]), N.array([s2_deg]), N.array([a2_deg]),
-            [exp_item], lattice, orientation, instrument
+        M1, M2, S1, S2, A1, A2 = SpecGoTo(
+            N.array([h]), N.array([k]), N.array([l]), N.array([w]),
+            [exp_item], lattice, orientation
         )
         
         return {
-            "h": H[0], "k": K[0], "l": L[0], "e": E[0], "q": Q[0], 
-            "ei": Ei[0], "ef": Ef[0],
-            "m2": m2_deg, "s1": s1_deg, "s2": s2_deg, "a2": a2_deg, 
-            "m1": "N/A", "a1": "N/A" 
+            "h": h, "k": k, "l": l, "e": w,
+            "m2": M2[0], "m1": M1[0], 
+            "s2": S2[0], "s1": S1[0],
+            "a2": A2[0], "a1": A1[0]
         }
     except Exception as e:
         print(f"Python error: {traceback.format_exc()}") 
